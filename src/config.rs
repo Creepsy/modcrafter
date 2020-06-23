@@ -9,6 +9,16 @@ pub struct Version {
     revision: u16,
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ModConfig {
+    mc_version: Version,
+    mod_version: String,
+    display_name: String,
+    description: String,
+    mod_id: String,
+    authors: Option<String>,
+}
+
 impl Version {
     fn empty() -> Self {
         Version {
@@ -30,15 +40,6 @@ impl From<&str> for Version {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct ModConfig {
-    pub mc_version: Version,
-    pub mod_version: String,
-    pub display_name: String,
-    pub description: String,
-    pub mod_id: String,
-}
-
 impl ModConfig {
     pub fn new(
         directory: &Path,
@@ -46,6 +47,7 @@ impl ModConfig {
         mod_id: Option<&str>,
         mod_version: Option<&str>,
         description: Option<&str>,
+        authors: Option<&str>,
     ) -> Result<Self, Error> {
         std::fs::create_dir_all(directory)?;
         let p_abs = directory.canonicalize()?;
@@ -80,10 +82,23 @@ impl ModConfig {
             mod_version,
             description,
             display_name: String::from(display_name),
+            authors: if let Some(authors) = authors {
+                Some(String::from(authors))
+            } else {
+                None
+            },
         })
     }
 
     pub fn set_mc_version(&mut self, verstr: &str) {
         self.mc_version = Version::from(verstr);
+    }
+
+    pub fn mod_id(&self) -> &str {
+        &self.mod_id
+    }
+
+    pub fn mod_version(&self) -> &str {
+        &self.mod_version
     }
 }

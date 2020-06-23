@@ -76,14 +76,15 @@ fn main() {
         )
         .get_matches();
     let result = match matches.subcommand() {
-        ("create", Some(extra)) => create::create_project(
+        ("create", Some(extra)) => create::create_project(create::Parameters::new(
             extra.value_of("DIR").unwrap(),
             extra.value_of("FORGE").unwrap(),
             extra.value_of("display"),
             extra.value_of("modid"),
             extra.value_of("version"),
             extra.value_of("description"),
-        ),
+            extra.value_of("authors"),
+        )),
         _ => return,
     };
 

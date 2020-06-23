@@ -2,34 +2,68 @@ use super::config::ModConfig;
 use super::Error;
 use indicatif::{ProgressBar, ProgressStyle};
 use regex::Regex;
+use serde::{Deserialize, Serialize};
 use std::fs::{self, File};
 use std::io::{self, Read, Write};
 use std::path::Path;
 
-pub fn create_project(
-    directory: &str,
-    forge_zip: &str,
-    display_name: Option<&str>,
-    modid: Option<&str>,
-    modversion: Option<&str>,
-    description: Option<&str>,
-) -> Result<(), Error> {
-    let p = Path::new(directory);
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Parameters<'par> {
+    directory: &'par str,
+    forge_zip: &'par str,
+    display_name: Option<&'par str>,
+    mod_id: Option<&'par str>,
+    mod_version: Option<&'par str>,
+    description: Option<&'par str>,
+    authors: Option<&'par str>,
+}
+
+impl<'par> Parameters<'par> {
+    pub fn new(
+        directory: &'par str,
+        forge_zip: &'par str,
+        display_name: Option<&'par str>,
+        mod_id: Option<&'par str>,
+        mod_version: Option<&'par str>,
+        description: Option<&'par str>,
+        authors: Option<&'par str>,
+    ) -> Self {
+        Parameters {
+            directory,
+            forge_zip,
+            display_name,
+            mod_id,
+            mod_version,
+            description,
+            authors,
+        }
+    }
+}
+
+pub fn create_project(parameters: Parameters) -> Result<(), Error> {
+    let p = Path::new(parameters.directory);
     if p.exists() {
         return Err(Error::ProjectFolderExists);
     }
     println!("[1/5] Creating Project Folder...");
-    let mut config = ModConfig::new(p, display_name, modid, modversion, description)?;
-    let mod_dir = p.join(&config.mod_id);
+    let mut config = ModConfig::new(
+        p,
+        parameters.display_name,
+        parameters.mod_id,
+        parameters.mod_version,
+        parameters.description,
+        parameters.authors,
+    )?;
+    let mod_dir = p.join(config.mod_id());
     fs::create_dir_all(&mod_dir)?;
     println!("[2/5] Unpacking Forge...");
-    unpack_forge(forge_zip, &mod_dir)?;
+    unpack_forge(parameters.forge_zip, &mod_dir)?;
     println!("[3/5] Writing Config...");
     let config_file = File::create(&p.join("config.json")).unwrap();
     config.set_mc_version(&find_version_string(&mod_dir.join("build.gradle"))?);
     serde_json::to_writer_pretty(config_file, &config).unwrap();
     println!("[4/5] Cleaning Example Files...");
-    clean_example_files(&mod_dir, &config.mod_id, &config.mod_version)?;
+    clean_example_files(&mod_dir, config.mod_id(), config.mod_version())?;
     println!("[5/5] Running Gradle...");
     run_gradle(&mod_dir);
     Ok(())
