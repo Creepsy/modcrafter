@@ -1,15 +1,37 @@
-use super::config::MainConfig;
+use super::config::ModConfig;
 use super::Error;
 use indicatif::{ProgressBar, ProgressStyle};
 use regex::Regex;
 use std::fs::{self, File};
-use std::io::{self, Read};
+use std::io::{self, Read, Write};
 use std::path::Path;
 
-fn write_base_config(p: &Path, name: &str, version: &str) -> Result<(), Error> {
-    let file = File::create(p)?;
-    let config = MainConfig::new(name, version);
-    serde_json::to_writer_pretty(file, &config).unwrap();
+pub fn create_project(
+    directory: &str,
+    forge_zip: &str,
+    display_name: Option<&str>,
+    modid: Option<&str>,
+    modversion: Option<&str>,
+    description: Option<&str>,
+) -> Result<(), Error> {
+    let p = Path::new(directory);
+    if p.exists() {
+        return Err(Error::ProjectFolderExists);
+    }
+    println!("[1/5] Creating Project Folder...");
+    let mut config = ModConfig::new(p, display_name, modid, modversion, description)?;
+    let mod_dir = p.join(&config.mod_id);
+    fs::create_dir_all(&mod_dir)?;
+    println!("[2/5] Unpacking Forge...");
+    unpack_forge(forge_zip, &mod_dir)?;
+    println!("[3/5] Writing Config...");
+    let config_file = File::create(&p.join("config.json")).unwrap();
+    config.set_mc_version(&find_version_string(&mod_dir.join("build.gradle"))?);
+    serde_json::to_writer_pretty(config_file, &config).unwrap();
+    println!("[4/5] Cleaning Example Files...");
+    clean_example_files(&mod_dir, &config.mod_id, &config.mod_version)?;
+    println!("[5/5] Running Gradle...");
+    run_gradle(&mod_dir);
     Ok(())
 }
 
@@ -46,54 +68,50 @@ fn run_gradle(forge_dir: &Path) {
         std::thread::sleep(std::time::Duration::from_millis(50));
     }
     spinner.finish_and_clear();
+    std::env::set_current_dir("../").unwrap();
 }
 
-pub fn create_project(directory: &str, forge_zip: &str) -> Result<(), Error> {
-    let p = Path::new(directory);
-    if !p.exists() {
-        println!("[1/4] Creating Project Folder...");
-        fs::create_dir_all(p)?;
-        fs::create_dir_all(p.join("mdkdir"))?;
-        println!("[2/4] Unpacking Forge...");
-        let mut archive = zip::ZipArchive::new(File::open(forge_zip)?)?;
-        let bar = ProgressBar::new(archive.len() as u64);
-        for i in 0..archive.len() {
-            let mut file = archive.by_index(i).unwrap();
-            let outpath = file.sanitized_name();
+fn unpack_forge(forge_zip: &str, mod_dir: &Path) -> Result<(), Error> {
+    let mut archive = zip::ZipArchive::new(File::open(forge_zip)?)?;
+    let bar = ProgressBar::new(archive.len() as u64);
+    for i in 0..archive.len() {
+        let mut file = archive.by_index(i).unwrap();
+        let outpath = file.sanitized_name();
 
-            if file.name().ends_with('/') {
-                fs::create_dir_all(p.join("mdkdir").join(&outpath)).unwrap();
-            } else {
-                let mut outfile = fs::File::create(p.join("mdkdir").join(&outpath)).unwrap();
-                io::copy(&mut file, &mut outfile).unwrap();
-            }
-            #[cfg(unix)]
-            {
-                use std::os::unix::fs::PermissionsExt;
-                if let Some(mode) = file.unix_mode() {
-                    fs::set_permissions(
-                        p.join("mdkdir").join(&outpath),
-                        fs::Permissions::from_mode(mode),
-                    )
-                    .unwrap();
-                }
-            }
-            bar.inc(1);
+        if file.name().ends_with('/') {
+            fs::create_dir_all(&mod_dir.join(&outpath)).unwrap();
+        } else {
+            let mut outfile = fs::File::create(&mod_dir.join(&outpath)).unwrap();
+            io::copy(&mut file, &mut outfile).unwrap();
         }
-        bar.finish_and_clear();
-        println!("[3/4] Writing Config...");
-        write_base_config(
-            &p.join("config.json"),
-            &*p.canonicalize()?
-                .file_name()
-                .ok_or(Error::FileIOError)?
-                .to_string_lossy(),
-            &find_version_string(&p.join("mdkdir").join("build.gradle"))?,
-        )?;
-        println!("[4/4] Running Gradle...");
-        run_gradle(&p.join("mdkdir"));
-    } else {
-        return Err(Error::ProjectFolderExists);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            if let Some(mode) = file.unix_mode() {
+                fs::set_permissions(&mod_dir.join(&outpath), fs::Permissions::from_mode(mode))
+                    .unwrap();
+            }
+        }
+        bar.inc(1);
+    }
+    bar.finish_and_clear();
+    Ok(())
+}
+
+fn clean_example_files(mod_dir: &Path, mod_id: &str, mod_version: &str) -> Result<(), Error> {
+    fs::remove_dir_all(mod_dir.join("src"))?;
+    let mut buf = String::new();
+    {
+        let mut build_gradle = File::open(mod_dir.join("build.gradle")).unwrap();
+        build_gradle.read_to_string(&mut buf).unwrap();
+        buf = buf.replace("com.yourname.modid", &format!("modcrafter.{}", mod_id));
+        buf = buf.replace("modid", mod_id);
+        buf = buf.replace("examplemod", mod_id);
+        buf = buf.replace("version = '1.0'", &format!("version = '{}'", mod_version));
+    }
+    {
+        let mut build_gradle = File::create(mod_dir.join("build.gradle")).unwrap();
+        build_gradle.write_all(buf.as_bytes()).unwrap();
     }
     Ok(())
 }

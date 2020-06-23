@@ -55,6 +55,10 @@ fn main() {
         ("create", Some(extra)) => create::create_project(
             extra.value_of("DIR").unwrap(),
             extra.value_of("FORGE").unwrap(),
+            None,
+            None,
+            None,
+            None,
         ),
         _ => panic!("invalid subcommand"),
     };
