@@ -48,6 +48,30 @@ fn main() {
                     Arg::with_name("FORGE")
                         .help("The path to the forge MDK zip file")
                         .required(true),
+                )
+                .arg(
+                    Arg::with_name("display")
+                        .long("display-name")
+                        .value_name("NAME")
+                        .help("The display name of the mod"),
+                )
+                .arg(
+                    Arg::with_name("modid")
+                        .long("modid")
+                        .value_name("ID")
+                        .help("The mod ID"),
+                )
+                .arg(
+                    Arg::with_name("version")
+                        .long("version")
+                        .value_name("VERSION")
+                        .help("The version of the mod"),
+                )
+                .arg(
+                    Arg::with_name("description")
+                        .long("description")
+                        .value_name("DESC")
+                        .help("The mod description"),
                 ),
         )
         .get_matches();
@@ -55,12 +79,12 @@ fn main() {
         ("create", Some(extra)) => create::create_project(
             extra.value_of("DIR").unwrap(),
             extra.value_of("FORGE").unwrap(),
-            None,
-            None,
-            None,
-            None,
+            extra.value_of("display"),
+            extra.value_of("modid"),
+            extra.value_of("version"),
+            extra.value_of("description"),
         ),
-        _ => panic!("invalid subcommand"),
+        _ => return,
     };
 
     if let Err(err) = result {
