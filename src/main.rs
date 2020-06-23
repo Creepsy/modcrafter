@@ -1,35 +1,8 @@
 use clap::{App, Arg, SubCommand};
-use std::fmt::{self, Display, Formatter};
-use std::io::{self};
-use zip::result::ZipError;
 
+mod build;
 mod config;
 mod create;
-
-#[derive(Debug)]
-pub enum Error {
-    ProjectFolderExists,
-    FileIOError,
-    ZipIOError,
-}
-
-impl From<io::Error> for Error {
-    fn from(_: io::Error) -> Self {
-        Error::FileIOError
-    }
-}
-
-impl From<ZipError> for Error {
-    fn from(_: ZipError) -> Self {
-        Error::ZipIOError
-    }
-}
-
-impl Display for Error {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "{:?}", self)
-    }
-}
 
 fn main() {
     let matches = App::new("modcrafter")

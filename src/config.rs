@@ -1,4 +1,3 @@
-use super::Error;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
@@ -48,7 +47,7 @@ impl ModConfig {
         mod_version: Option<&str>,
         description: Option<&str>,
         authors: Option<&str>,
-    ) -> Result<Self, Error> {
+    ) -> Result<Self, anyhow::Error> {
         std::fs::create_dir_all(directory)?;
         let p_abs = directory.canonicalize()?;
         let display_name = if let Some(name) = display_name {
@@ -57,7 +56,7 @@ impl ModConfig {
             String::from(
                 p_abs
                     .file_name()
-                    .ok_or(Error::FileIOError)?
+                    .ok_or(anyhow::Error::new(std::io::Error::from_raw_os_error(2)))?
                     .to_string_lossy(),
             )
         };
