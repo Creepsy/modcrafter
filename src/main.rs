@@ -3,6 +3,7 @@ use clap::{App, Arg, SubCommand};
 mod build;
 mod config;
 mod create;
+mod gradle;
 
 fn main() {
     let matches = App::new("modcrafter")
@@ -45,31 +46,49 @@ fn main() {
                         .long("description")
                         .value_name("DESC")
                         .help("The mod description"),
+                )
+                .arg(
+                    Arg::with_name("verbose")
+                        .long("verbose")
+                        .short("v")
+                        .help("Verbose logging"),
                 ),
         )
         .subcommand(
-            SubCommand::with_name("build").about("Build a project").arg(
-                Arg::with_name("directory")
-                    .short("d")
-                    .long("directory")
-                    .value_name("DIR")
-                    .help("The directory of the project"),
-            ),
+            SubCommand::with_name("build")
+                .about("Build a project")
+                .arg(
+                    Arg::with_name("directory")
+                        .short("d")
+                        .long("directory")
+                        .value_name("DIR")
+                        .help("The directory of the project"),
+                )
+                .arg(
+                    Arg::with_name("verbose")
+                        .long("verbose")
+                        .short("v")
+                        .help("Verbose logging"),
+                ),
         )
         .get_matches();
     let result = match matches.subcommand() {
-        ("create", Some(extra)) => create::create_project(create::Parameters::new(
-            extra.value_of("DIR").unwrap(),
-            extra.value_of("FORGE").unwrap(),
-            extra.value_of("display"),
-            extra.value_of("modid"),
-            extra.value_of("version"),
-            extra.value_of("description"),
-            extra.value_of("authors"),
-        )),
-        ("build", Some(extra)) => build::build_project(build::Parameters::new(
-            extra.value_of("directory").unwrap_or("."),
-        )),
+        ("create", Some(extra)) => create::create_project(
+            create::Parameters::new(
+                extra.value_of("DIR").unwrap(),
+                extra.value_of("FORGE").unwrap(),
+                extra.value_of("display"),
+                extra.value_of("modid"),
+                extra.value_of("version"),
+                extra.value_of("description"),
+                extra.value_of("authors"),
+            ),
+            extra.is_present("verbose"),
+        ),
+        ("build", Some(extra)) => build::build_project(
+            build::Parameters::new(extra.value_of("directory").unwrap_or(".")),
+            extra.is_present("verbose"),
+        ),
         _ => return,
     };
 

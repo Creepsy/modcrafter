@@ -1,5 +1,5 @@
 use super::config::ModConfig;
-use indicatif::{ProgressBar, ProgressStyle};
+use indicatif::ProgressBar;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::fs::{self, File};
@@ -39,7 +39,7 @@ impl<'par> Parameters<'par> {
     }
 }
 
-pub fn create_project(parameters: Parameters) -> Result<(), anyhow::Error> {
+pub fn create_project(parameters: Parameters, verbose: bool) -> Result<(), anyhow::Error> {
     let p = Path::new(parameters.directory);
     if p.exists() {
         return Err(anyhow::Error::new(std::io::Error::from_raw_os_error(17)));
@@ -64,7 +64,7 @@ pub fn create_project(parameters: Parameters) -> Result<(), anyhow::Error> {
     println!("[4/5] Cleaning Example Files...");
     clean_example_files(&mod_dir, config.mod_id(), config.mod_version())?;
     println!("[5/5] Running Gradle...");
-    run_gradle(&mod_dir)?;
+    crate::gradle::run(&mod_dir, "prepareRuns", verbose)?;
     Ok(())
 }
 
@@ -74,34 +74,6 @@ fn find_version_string(p: &Path) -> Result<String, anyhow::Error> {
     let pattern = Regex::new(r"net\.minecraftforge:forge:.*-")?;
     let verstr_raw: &str = &pattern.captures_iter(&s).next().unwrap()[0];
     Ok(String::from(&verstr_raw[25..verstr_raw.len() - 1]))
-}
-
-fn run_gradle(forge_dir: &Path) -> Result<(), anyhow::Error> {
-    std::env::set_current_dir(forge_dir)?;
-    let gradlew;
-    #[cfg(target_family = "unix")]
-    {
-        gradlew = "./gradlew";
-    }
-    #[cfg(target_family = "windows")]
-    {
-        gradlew = ".\\gradlew.bat";
-    }
-    let spinner = ProgressBar::new_spinner().with_style(
-        ProgressStyle::default_spinner().template("[{elapsed_precise}] {msg} {spinner}"),
-    );
-    spinner.set_message("Running...");
-    let mut child = std::process::Command::new(gradlew)
-        .args(&["prepareRuns"])
-        .stdout(std::process::Stdio::null())
-        .spawn()?;
-    while let Ok(None) = child.try_wait() {
-        spinner.tick();
-        std::thread::sleep(std::time::Duration::from_millis(50));
-    }
-    spinner.finish_and_clear();
-    std::env::set_current_dir("../")?;
-    Ok(())
 }
 
 fn unpack_forge(forge_zip: &str, mod_dir: &Path) -> Result<(), anyhow::Error> {
