@@ -65,16 +65,9 @@ impl ModConfig {
         } else {
             display_name.replace(" ", "_").to_lowercase()
         };
-        let mod_version = String::from(if let Some(version) = mod_version {
-            version
-        } else {
-            "0.1.0"
-        });
-        let description = String::from(if let Some(description) = description {
-            description
-        } else {
-            "This mod was created using modcrafter."
-        });
+        let mod_version = String::from(mod_version.unwrap_or("0.1.0"));
+        let description =
+            String::from(description.unwrap_or("This mod was created using modcrafter."));
         Ok(ModConfig {
             mc_version: Version::empty(),
             mod_id,
@@ -99,5 +92,9 @@ impl ModConfig {
 
     pub fn mod_version(&self) -> &str {
         &self.mod_version
+    }
+
+    pub fn display_name(&self) -> &str {
+        &self.display_name
     }
 }

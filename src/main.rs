@@ -47,6 +47,15 @@ fn main() {
                         .help("The mod description"),
                 ),
         )
+        .subcommand(
+            SubCommand::with_name("build").about("Build a project").arg(
+                Arg::with_name("directory")
+                    .short("d")
+                    .long("directory")
+                    .value_name("DIR")
+                    .help("The directory of the project"),
+            ),
+        )
         .get_matches();
     let result = match matches.subcommand() {
         ("create", Some(extra)) => create::create_project(create::Parameters::new(
@@ -57,6 +66,9 @@ fn main() {
             extra.value_of("version"),
             extra.value_of("description"),
             extra.value_of("authors"),
+        )),
+        ("build", Some(extra)) => build::build_project(build::Parameters::new(
+            extra.value_of("directory").unwrap_or("."),
         )),
         _ => return,
     };
