@@ -1,0 +1,17 @@
+[package]
+name = "modcrafter"
+version = "0.1.0"
+authors = ["Ian Rehwinkel <ian.rehwinkel@tutanota.com>"]
+edition = "2018"
+
+[workspace]
+members = ["modcrafter_java"]
+
+[dependencies]
+clap = "2.33.1"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+modcrafter_java = { path = "modcrafter_java" }
+zip = "0.5"
+regex = "1"
+indicatif = "0.15"
